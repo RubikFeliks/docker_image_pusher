@@ -1,5 +1,3 @@
-# 添加架构平台
-#--platform=linux/amd64 镜像名
 ocsinventory/ocsinventory-docker-image:2.12.1
 mysql:8.0
 nginx:latest
