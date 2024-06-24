@@ -4,3 +4,4 @@ nginx
 jenkins/jenkins:lts
 mysql:5.7
 mariadb
+adminer
