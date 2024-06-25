@@ -1,5 +1,5 @@
 ocsinventory/ocsinventory-docker-image:2.12.1
-ocsinventory/ocsinventory-docker-image:2.10.2
+ocsinventory/ocsinventory-docker-image:2.10
 mysql:8.0
 nginx
 jenkins/jenkins:lts
