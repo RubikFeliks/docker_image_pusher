@@ -1,4 +1,5 @@
 hiromuhota/webspoon:0.9.0.22
+tomcat:jdk17
 ocsinventory/ocsinventory-docker-image:2.12.1
 ocsinventory/ocsinventory-docker-image:2.10
 mysql:8.0
