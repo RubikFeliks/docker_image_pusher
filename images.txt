@@ -34,4 +34,5 @@ sonarqube:9.9.0-community
 sonarqube:latest
 sonarqube:lts
 sonarqube:lts-community
+archlinux:base-devel
 sickcodes/docker-osx
