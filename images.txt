@@ -36,3 +36,4 @@ sonarqube:lts
 sonarqube:lts-community
 archlinux:base-devel
 sickcodes/docker-osx
+node:lts-slim
