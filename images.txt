@@ -38,3 +38,8 @@ archlinux:base-devel
 sickcodes/docker-osx
 node:lts-slim
 qwenllm/qwen:2-cu121
+minio
+qanything_local
+standalone
+elasticsearch
+etcd
