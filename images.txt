@@ -42,4 +42,4 @@ minio/minio:RELEASE.2023-03-20T20-16-18Z
 milvusdb/milvus:v2.3.4
 freeren/qanything:v1.2.2
 elasticsearch:8.11.4
-coreos/etcd:v3.5.5
+quay.io/coreos/etcd:v3.5.5
