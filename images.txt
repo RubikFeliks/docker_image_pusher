@@ -34,7 +34,6 @@ sonarqube:latest
 sonarqube:lts
 sonarqube:lts-community
 archlinux:base-devel
-sickcodes/docker-osx
 node:lts-slim
 qwenllm/qwen:2-cu121
 minio/minio:RELEASE.2023-03-20T20-16-18Z
