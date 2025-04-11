@@ -46,3 +46,4 @@ infoslack/dvwa
 mattrayner/lamp:latest-2004-php7
 keking/kkfileview:4.1.0
 docker.io/library/ubuntu:jammy-20240627.1
+linuxserver/chevereto
