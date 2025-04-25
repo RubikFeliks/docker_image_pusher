@@ -16,6 +16,7 @@ ocsinventory/ocsinventory-docker-image:2.12.1
 ocsinventory/ocsinventory-docker-image:2.10
 mysql:5.7
 mysql:8.0
+mysql:8.3.0
 nginx
 mariadb
 adminer
