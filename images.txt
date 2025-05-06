@@ -17,6 +17,7 @@ ocsinventory/ocsinventory-docker-image:2.10
 mysql:5.7
 mysql:8.0
 mysql:8.3.0
+mysql
 nginx
 mariadb
 adminer
@@ -52,3 +53,6 @@ nocodb/nocodb:latest
 traefik
 docker.n8n.io/n8nio/n8n
 n8nio/n8n:1.89.2
+ragflow
+redis
+es01
