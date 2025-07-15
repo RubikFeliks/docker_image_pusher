@@ -29,6 +29,7 @@ odoo:12.0
 odoo:15.0
 odoo:16.0
 odoo:17.0
+odoo:18.0
 postgres:12
 postgres:15
 postgres:16
