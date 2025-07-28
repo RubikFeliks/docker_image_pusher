@@ -1,3 +1,4 @@
+jenkins/jenkins:lts-jdk17
 registry.k8s.io/ingress-nginx/controller:v1.10.0
 registry.k8s.io/ingress-nginx/controller:v1.13.0
 registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.4.0
