@@ -1,3 +1,4 @@
+nginx:1.21.6
 nginx:stable-alpine
 node:20-alpine
 jenkins/jenkins:lts-jdk17
