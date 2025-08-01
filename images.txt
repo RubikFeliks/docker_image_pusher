@@ -1,3 +1,4 @@
+nginx:stable-alpine
 node:20-alpine
 jenkins/jenkins:lts-jdk17
 registry.k8s.io/ingress-nginx/controller:v1.10.0
