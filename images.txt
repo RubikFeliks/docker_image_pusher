@@ -1,5 +1,6 @@
 nginx:1.21.6
 nginx:stable-alpine
+nginx:1.21-alpine
 node:20-alpine
 jenkins/jenkins:lts-jdk17
 registry.k8s.io/ingress-nginx/controller:v1.10.0
