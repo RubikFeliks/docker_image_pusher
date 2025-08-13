@@ -1,3 +1,5 @@
+linuxserver/chevereto
+gitea/gitea:1.21.1
 nginx:1.21.6
 nginx:stable-alpine
 nginx:1.21-alpine
