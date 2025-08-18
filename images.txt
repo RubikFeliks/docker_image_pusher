@@ -1,3 +1,5 @@
+python:3.10.8-slim
+python:3.11-slim
 linuxserver/chevereto
 gitea/gitea:1.21.1
 nginx:1.21.6
