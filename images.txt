@@ -16,6 +16,7 @@ registry.k8s.io/ingress-nginx/controller:v1.10.0
 registry.k8s.io/ingress-nginx/controller:v1.13.0
 registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.4.0
 debian
+debian:10
 debian:stable-slim
 debian:stable
 debian:bullseye
