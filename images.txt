@@ -49,7 +49,7 @@ odoo:15.0
 odoo:16.0
 odoo:17.0
 odoo:18.0
-postgres:9.4.3
+postgres:9.0
 postgres:10
 postgres:12
 postgres:15
