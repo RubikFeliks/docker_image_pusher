@@ -1,4 +1,7 @@
 jenkins/jenkins:2.440.3-lts
+jenkins/jenkins:2.528.1-lts
+jenkins/jenkins:2.528.1-lts-jdk21
+jenkins/jenkins:lts-jdk21
 postgres:9.6
 mariadb:10.11-jammy
 seatable/seatable-developer:5.3.0
