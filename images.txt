@@ -49,6 +49,7 @@ phpmyadmin
 jenkins/jenkins:lts
 python:3.10.8-slim
 python:3.12-slim
+python:3.11-slim
 odoo:11.0
 odoo:12.0
 odoo:15.0
