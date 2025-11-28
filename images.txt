@@ -1,3 +1,4 @@
+lscr.io/linuxserver/smokeping:latest
 mariadb:10.11-jammy
 seatable/seatable-developer:5.3.0
 redis:5.0.7
