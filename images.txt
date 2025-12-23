@@ -1,4 +1,5 @@
 docker.io/infiniflow/ragflow:v0.22.1
+infinity/infinity:v0.6.11
 lscr.io/linuxserver/smokeping:latest
 mariadb:10.11-jammy
 seatable/seatable-developer:5.3.0
