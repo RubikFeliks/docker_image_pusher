@@ -1,4 +1,6 @@
 infiniflow/infinity:v0.6.1
+infiniflow/ragflow:nightly
+infiniflow/ragflow:latest
 infiniflow/sandbox-executor-manager:latest
 infiniflow/sandbox-base-python:latest
 infiniflow/sandbox-base-nodejs:latest
