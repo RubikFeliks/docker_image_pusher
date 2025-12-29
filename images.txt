@@ -7,6 +7,7 @@ infiniflow/sandbox-base-python:latest
 infiniflow/sandbox-base-nodejs:latest
 docker.io/infiniflow/ragflow:v0.22.1
 docker.io/infiniflow/ragflow:v0.21.1
+valkey/valkey:8
 infiniflow/text-embeddings-inference:cpu-1.8
 infiniflow/text-embeddings-inference:1.8
 lscr.io/linuxserver/smokeping:latest
