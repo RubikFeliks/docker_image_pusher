@@ -43,9 +43,11 @@ odoo:15.0
 odoo:16.0
 odoo:17.0
 odoo:18.0
+odoo:19.0
 postgres:15
 postgres:16
 postgres:17
+postgres:18
 sonarqube:latest
 sonarqube:lts
 sonarqube:lts-community
