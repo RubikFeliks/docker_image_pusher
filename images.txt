@@ -1,3 +1,4 @@
+busybox:latest
 mysql/mysql-server
 eosphorosai/dbgpt-openai:latest
 infiniflow/ragflow:nightly
