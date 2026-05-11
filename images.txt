@@ -1,5 +1,5 @@
-apache/apisix:3.9.1
-ghcr.io/berriai/litellm:main-latest
+apache/apisix:3.9.1-redhat
+ghcr.io/berriai/litellm:main
 vllm/vllm-openai:latest
 redis:7.2
 ghcr.io/open-webui/open-webui:main
