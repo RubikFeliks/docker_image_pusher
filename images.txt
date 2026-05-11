@@ -1,4 +1,4 @@
-apache/apisix:3.9.0-alpine
+apache/apisix:3.9.0-redhat
 ghcr.io/berriai/litellm:main
 vllm/vllm-openai:0.6.0
 redis:7-alpine
