@@ -1,3 +1,7 @@
+apache/apisix:3.9.0-alpine
+ghcr.io/berriai/litellm:main
+vllm/vllm-openai:0.6.0
+redis:7-alpine
 ghcr.io/open-webui/open-webui:main
 busybox:latest
 mysql/mysql-server
