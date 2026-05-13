@@ -1,9 +1,12 @@
-apache/apisix:3.9.1-redhat
+apache/apisix:3.9.1-debian
 ghcr.io/berriai/litellm:v1.83.14-stable
 vllm/vllm-openai:latest
 redis:7.2
 ghcr.io/open-webui/open-webui:v0.9.5
-busybox:latest
+bitnamicharts/prometheus:2.1.23
+grafana/grafana:latest-ubuntu
+bitnamicharts/etcd:12.0.18
+ollama/ollama
 mysql/mysql-server
 eosphorosai/dbgpt-openai:latest
 infiniflow/ragflow:nightly
