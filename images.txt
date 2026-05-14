@@ -1,3 +1,4 @@
+paddlepaddle/paddleocr-vl-web
 paddlepaddle/paddle:3.3.0
 apache/apisix:3.11.0-debian
 apache/apisix:3.16.0-debian
