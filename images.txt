@@ -9,6 +9,8 @@ apache/apisix:3.15.0-debian
 apache/apisix:3.15.0-redhat
 apache/apisix:3.16.0-debian
 apache/apisix:3.16.0-redhat
+apache/apisix-dashboard:3.0.1-alpine
+apache/apisix-dashboard:3.0.1-centos
 ghcr.io/berriai/litellm:v1.83.14-stable
 vllm/vllm-openai:latest
 redis:7.2
