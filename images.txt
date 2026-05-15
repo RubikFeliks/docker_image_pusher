@@ -1,5 +1,4 @@
-paddlepaddle/paddle:3.3.1-gpu-cuda12.6-cudnn9.5
-paddlepaddle/paddle:3.3.1-gpu-cuda13.0-cudnn9.13
+keycloak/keycloak:26.6
 calciumion/new-api
 paddlepaddle/paddle:3.3.0
 apache/apisix:3.11.0-debian
