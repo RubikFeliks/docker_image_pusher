@@ -1,6 +1,6 @@
 keycloak/keycloak:26.6
+casbin/casdoor:3.57.2
 calciumion/new-api
-paddlepaddle/paddle:3.3.0
 apache/apisix:3.11.0-debian
 apache/apisix:3.16.0-debian
 apache/apisix-dashboard:3.0.1-alpine
