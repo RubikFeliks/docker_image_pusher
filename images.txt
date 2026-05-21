@@ -1,5 +1,6 @@
 n8nio/n8n:nightly
 n8nio/n8n:2.21.5
+traefik:v3.7
 n8nio/runners:nightly
 n8nio/runners:2.21.5
 langgenius/dify-sandbox:0.2.15
