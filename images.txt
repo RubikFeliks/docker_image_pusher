@@ -1,5 +1,4 @@
-pytorch/pytorch:1.12.1-cuda11.3-cudnn8-runtime
-pytorch/pytorch:2.4.0-cuda11.8-cudnn9-runtime
+pytorch/pytorch:1.10.0-cuda11.3-cudnn8-runtime
 n8nio/n8n:2.21.5
 traefik:v3.7
 n8nio/runners:2.21.5
