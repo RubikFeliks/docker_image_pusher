@@ -1,3 +1,4 @@
+n8nio/n8n:nightly
 keycloak/keycloak:26.6
 casbin/casdoor:3.57.0
 calciumion/new-api
