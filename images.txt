@@ -1,4 +1,4 @@
-pytorch/pytorch:1.10.0-cuda11.3-cudnn8-runtime
+ghrc.io/ggml-org/llama.cpp:server-cuda
 n8nio/n8n:2.21.5
 traefik:v3.7
 n8nio/runners:2.21.5
