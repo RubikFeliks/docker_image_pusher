@@ -1,3 +1,4 @@
+rustfs/rustfs:latest
 mysql:8.4.5
 bitnamilegacy/redis:8.0
 bitnamilegacy/elasticsearch:8.18.0
@@ -7,7 +8,3 @@ milvusdb/milvus:v2.5.10
 nsqio/nsq:v1.2.1
 cozedev/coze-studio-server:latest
 cozedev/coze-studio-web:latest
-vllm/vllm-openai:v0.19.1-x86_64
-vllm/vllm-openai:v0.19.1-cu130
-vllm/vllm-openai:v0.11.0
-vllm/vllm-openai-cpu:v0.19.1-x86_64
