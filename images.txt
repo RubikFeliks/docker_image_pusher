@@ -1,4 +1,4 @@
-rustfs/rustfs:latest
+minio/minio:RELEASE.2025-04-22T22-12-26Z
 mysql:8.4.5
 bitnamilegacy/redis:8.0
 bitnamilegacy/elasticsearch:8.18.0
