@@ -1,4 +1,4 @@
-quay.io/oauth2-proxy/oauth2-proxy:latest
+chrislusf/seaweedfs
 mysql:8.4.5
 bitnamilegacy/redis:8.0
 bitnamilegacy/elasticsearch:8.18.0
