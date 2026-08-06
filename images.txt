@@ -1,4 +1,4 @@
-o2cr.ai/openobserve/openobserve-enterprise:v0.91.5
+o2cr.ai/openobserve/openobserve:v0.91.5
 langgenius/dify-api:1.15.0
 langgenius/dify-web:1.15.0
 langgenius/dify-plugin-daemon:0.6.3-local
