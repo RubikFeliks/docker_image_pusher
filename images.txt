@@ -1,9 +1,5 @@
-langgenius/dify-api:1.16.1
-langgenius/dify-web:1.16.1
-langgenius/dify-plugin-daemon:0.6.3-local
-busybox:latest
-nginx:latest
-ubuntu/squid:latest
+langgenius/dify-agent-local-sandbox:1.16.1
+langgenius/dify-agent-backend:1.16.1
 openobserve/openobserve:v0.91.5
 langgenius/dify-api:1.15.0
 langgenius/dify-web:1.15.0
