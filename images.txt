@@ -1,10 +1,13 @@
+ghcr.io/zammad/zammad:7.1.2-0000
+elasticsearch:9.4.4
+postgres:17.10-alpine
+memcached:1.6.45-alpine
+redis:8.10-alpine
 openobserve/openobserve:v0.91.5
 langgenius/dify-api:1.15.0
 langgenius/dify-web:1.15.0
 langgenius/dify-plugin-daemon:0.6.3-local
 bitnamilegacy/redis:8.0
 bitnamilegacy/elasticsearch:8.18.0
-minio/minio:RELEASE.2025-06-13T11-33-47Z-cpuv1
 bitnamilegacy/etcd:3.5
 milvusdb/milvus:v2.5.10
-nsqio/nsq:v1.2.1
