@@ -1,8 +1,4 @@
-ghcr.io/zammad/zammad:7.1.2-0000
-elasticsearch:9.4.4
-postgres:17.10-alpine
-memcached:1.6.45-alpine
-redis:8.10-alpine
+calciumion/new-api:latest
 openobserve/openobserve:v0.91.5
 langgenius/dify-api:1.15.0
 langgenius/dify-web:1.15.0
