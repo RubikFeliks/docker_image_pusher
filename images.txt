@@ -1,3 +1,5 @@
+owasp/modsecurity-crs:4.25-nginx-lts
+openresty/openresty:1.31-alpine
 node:22-bookworm-slim
 nginx:1.31.4-alpine
 postgres:16-alpine
