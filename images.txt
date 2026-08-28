@@ -1,12 +1,1 @@
---platform=linux/arm64 vllm/vllm-openai:v0.28.0
---platform=linux/arm64 vllm/vllm-openai:v0.26.0
-langgenius/dify-agent-local-sandbox:1.16.1
-langgenius/dify-agent-backend:1.16.1
-openobserve/openobserve:v0.91.5
-langgenius/dify-api:1.15.0
-langgenius/dify-web:1.15.0
-langgenius/dify-plugin-daemon:0.6.3-local
-bitnamilegacy/redis:8.0
-bitnamilegacy/elasticsearch:8.18.0
-bitnamilegacy/etcd:3.5
-milvusdb/milvus:v2.5.10
+openwebui/open-webui:0.11
