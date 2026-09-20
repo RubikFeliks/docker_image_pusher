@@ -1,2 +1,1 @@
-searxng/searxng:2026.8.11-e8e710e42
-valkey/valkey:9.1.2-alpine
+--platform=linux/arm64 ollama/ollama:latest
