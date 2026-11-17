@@ -1,3 +1,4 @@
+openwebui/open-webui:0.13
 docker.io/clamav/clamav:1.4
 docker.io/guacamole/guacd:1.6.0
 docker.io/library/nginx:1.28-alpine
