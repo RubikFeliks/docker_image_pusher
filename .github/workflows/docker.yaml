@@ -21,24 +21,62 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install regctl
+      - name: Check disk space before expansion
         shell: bash
         run: |
-          curl -fsSL --retry 3 \
-            https://github.com/regclient/regclient/releases/latest/download/regctl-linux-amd64 \
-            -o "$RUNNER_TEMP/regctl"
-          chmod 755 "$RUNNER_TEMP/regctl"
-          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
-          "$RUNNER_TEMP/regctl" version
+          df -hP /
+          df -iP /
 
-      - name: Sync images to Aliyun ACR
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@v10
+        with:
+          root-reserve-mb: 8192
+          swap-size-mb: 128
+          remove-dotnet: 'true'
+          remove-haskell: 'true'
+          remove-android: 'true'
+          remove-codeql: 'true'
+          build-mount-path: /mnt/ci-docker-storage
+
+      - name: Move Docker and containerd storage to expanded volume
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          storage=/mnt/ci-docker-storage
+
+          # 扩容目录必须是独立挂载点，避免误把镜像写回根分区。
+          mountpoint -q "$storage"
+
+          # 使用 GitHub 托管 Runner 上的临时镜像目录。
+          sudo systemctl stop docker.socket docker.service
+          sudo systemctl stop containerd.service
+
+          sudo mkdir -p "$storage/docker" "$storage/containerd"
+          sudo mkdir -p /var/lib/docker /var/lib/containerd
+
+          sudo mount --bind "$storage/docker" /var/lib/docker
+          sudo mount --bind "$storage/containerd" /var/lib/containerd
+
+          sudo systemctl start containerd.service
+          sudo systemctl start docker.service
+
+          echo "检查 Docker 存储驱动和实际挂载"
+          docker info --format 'Driver={{.Driver}} DriverStatus={{json .DriverStatus}} DockerRootDir={{.DockerRootDir}}'
+          findmnt --mountpoint /var/lib/docker
+          findmnt --mountpoint /var/lib/containerd
+
+          echo "检查根分区和镜像存储容量"
+          df -hP / /home/runner /var/lib/docker /var/lib/containerd
+          df -iP / /home/runner /var/lib/docker /var/lib/containerd
+
+      - name: Pull and push images to Aliyun ACR
         shell: bash
         env:
           ALIYUN_REGISTRY: ${{ secrets.ALIYUN_REGISTRY }}
           ALIYUN_NAME_SPACE: ${{ secrets.ALIYUN_NAME_SPACE }}
           ALIYUN_REGISTRY_USER: ${{ secrets.ALIYUN_REGISTRY_USER }}
           ALIYUN_REGISTRY_PASSWORD: ${{ secrets.ALIYUN_REGISTRY_PASSWORD }}
-          CHECK_FIRST_IMAGE_DOWNLOAD: 'true'
         run: |
           set -euo pipefail
 
@@ -81,7 +119,7 @@ jobs:
               exit 1
             fi
 
-            # 原始引用用于复制，目标标签按去掉 digest 后的名称计算。
+            # 拉取时保留 digest，目标名称只使用镜像名和标签。
             repository=${image%%@*}
             name_tag=${repository##*/}
             name=${name_tag%%:*}
@@ -123,15 +161,16 @@ jobs:
             exit 0
           fi
 
-          export REGCTL_CONFIG="$RUNNER_TEMP/regctl-config.json"
+          # 把登录配置放在临时目录，步骤结束时清理。
           umask 077
-          trap 'rm -f -- "$REGCTL_CONFIG"' EXIT
+          export DOCKER_CONFIG
+          DOCKER_CONFIG=$(mktemp -d "$RUNNER_TEMP/docker-config.XXXXXX")
+          trap 'rm -rf -- "$DOCKER_CONFIG"' EXIT
 
           echo "登录阿里云 ACR"
           printf '%s\n' "$ALIYUN_REGISTRY_PASSWORD" |
-            timeout --kill-after=10s 60s \
-              regctl registry login "$ALIYUN_REGISTRY" \
-                -u "$ALIYUN_REGISTRY_USER" --pass-stdin
+            docker login "$ALIYUN_REGISTRY" \
+              --username "$ALIYUN_REGISTRY_USER" --password-stdin
 
           for i in "${!sources[@]}"; do
             image=${sources[$i]}
@@ -139,7 +178,6 @@ jobs:
             namespace=${namespaces[$i]}
             name=${names[$i]}
             tag=${tags[$i]}
-            selected_platform=${platform:-linux/amd64}
             item_number=$((i + 1))
 
             prefix=""
@@ -153,59 +191,23 @@ jobs:
             target_tag="${prefix}${name}:${tag}"
             target="${ALIYUN_REGISTRY}/${ALIYUN_NAME_SPACE}/${target_tag}"
 
-            echo "[$item_number/$total] 检查源镜像 $image（平台 $selected_platform）"
-            if manifest=$(
-              timeout --kill-after=10s 60s \
-                regctl image manifest --platform "$selected_platform" \
-                  --format raw-body "$image"
-            ); then
-              echo "源镜像清单读取成功"
-            else
-              status=$?
-              echo "::error::读取源镜像清单失败，镜像 $image，退出码 $status"
-              exit "$status"
-            fi
-
-            if [[ "$i" -eq 0 && "$CHECK_FIRST_IMAGE_DOWNLOAD" == 'true' ]]; then
-              if largest_layer=$(jq -er '.layers | max_by(.size) | .digest' <<< "$manifest"); then
-                sample_bytes=67108864
-                started=$SECONDS
-                echo "测试从源仓库读取最大镜像层的前 64 MiB，最多等待 90 秒"
-
-                # head 读够后会关闭管道。仅在此子 shell 里关闭 pipefail，
-                # 让 wc 报告实际收到的字节数，包括超时前已收到的数据。
-                received=$(
-                  set +o pipefail
-                  timeout --kill-after=5s 90s \
-                    regctl blob get "$image" "$largest_layer" |
-                    head -c "$sample_bytes" |
-                    wc -c
-                )
-
-                echo "源仓库测试：收到 $received/$sample_bytes 字节，耗时 $((SECONDS - started)) 秒"
-                if [[ "$received" -lt "$sample_bytes" ]]; then
-                  echo "::warning::源仓库抽样未读满 64 MiB，请结合上方错误和耗时查看"
-                fi
-              else
-                echo "::warning::无法从清单提取最大镜像层，继续正式复制"
-              fi
-            fi
-
-            echo "开始复制到 ACR，目标标签 $target_tag，单镜像限时 45 分钟"
+            echo "[$item_number/$total] 开始拉取 $image（平台 ${platform:-linux/amd64}）"
             started=$SECONDS
-            if timeout --kill-after=15s 45m \
-                regctl image copy --verbosity info \
-                  --platform "$selected_platform" "$image" "$target"; then
-              echo "同步完成 $image，目标标签 $target_tag，耗时 $((SECONDS - started)) 秒"
-            else
-              status=$?
-              if [[ "$status" -eq 124 || "$status" -eq 137 ]]; then
-                echo "::error::复制超时或进程被终止，镜像 $image，退出码 $status"
-              else
-                echo "::error::复制失败，镜像 $image，退出码 $status"
-              fi
-              exit "$status"
-            fi
+            docker pull --platform "${platform:-linux/amd64}" "$image"
+            echo "拉取完成，耗时 $((SECONDS - started)) 秒"
+
+            docker tag "$image" "$target"
+
+            echo "[$item_number/$total] 开始推送 $target_tag 到 ACR"
+            started=$SECONDS
+            docker push "$target"
+            echo "推送完成 $target_tag，耗时 $((SECONDS - started)) 秒"
+
+            # 推送成功后移除本地引用，为下一条镜像腾出空间。
+            docker image rm "$target" "$image"
+
+            echo "清理后剩余空间"
+            df -hP / /var/lib/docker /var/lib/containerd
           done
 
           echo "全部同步完成，共 $total 个镜像。"
