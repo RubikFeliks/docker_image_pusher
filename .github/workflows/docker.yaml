@@ -44,8 +44,6 @@ jobs:
           set -euo pipefail
 
           storage=/mnt/ci-docker-storage
-
-          # 扩容目录必须是独立挂载点。
           mountpoint -q "$storage"
 
           sudo systemctl stop docker.socket docker.service
@@ -60,7 +58,7 @@ jobs:
           sudo systemctl start containerd.service
           sudo systemctl start docker.service
 
-          echo "检查 Docker 存储驱动和实际挂载"
+          echo "检查 Docker 存储驱动和挂载"
           docker info --format 'Driver={{.Driver}} DriverStatus={{json .DriverStatus}} DockerRootDir={{.DockerRootDir}}'
           findmnt --mountpoint /var/lib/docker
           findmnt --mountpoint /var/lib/containerd
@@ -68,6 +66,12 @@ jobs:
           echo "检查根分区和镜像存储容量"
           df -hP / /home/runner /var/lib/docker /var/lib/containerd
           df -iP / /home/runner /var/lib/docker /var/lib/containerd
+
+      - name: Install Skopeo
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends skopeo
 
       - name: Pull and push images to Aliyun ACR
         shell: bash
@@ -122,7 +126,7 @@ jobs:
               exit 1
             fi
 
-            # 拉取时保留源引用中的 digest，生成目标标签时去掉 digest。
+            # 拉取时保留 digest，生成目标标签时去掉 digest。
             repository=${image%%@*}
             name_tag=${repository##*/}
             name=${name_tag%%:*}
@@ -164,7 +168,6 @@ jobs:
             exit 0
           fi
 
-          # 登录配置仅供当前步骤使用。
           umask 077
           export DOCKER_CONFIG
           DOCKER_CONFIG=$(mktemp -d "$RUNNER_TEMP/docker-config.XXXXXX")
@@ -174,6 +177,8 @@ jobs:
           printf '%s\n' "$ALIYUN_REGISTRY_PASSWORD" |
             docker login "$ALIYUN_REGISTRY" \
               --username "$ALIYUN_REGISTRY_USER" --password-stdin
+
+          auth_file="$DOCKER_CONFIG/config.json"
 
           for i in "${!sources[@]}"; do
             image=${sources[$i]}
@@ -207,7 +212,35 @@ jobs:
             docker push "$target"
             echo "推送完成 $target_tag，耗时 $((SECONDS - started)) 秒"
 
-            # 推送成功后移除本地镜像引用。
+            if [[ "$target_tag" == "open-webui:0.13" ]]; then
+              test_target="${target%:*}:0.13-schema2-test"
+
+              echo "生成 Docker Schema 2 测试标签 open-webui:0.13-schema2-test"
+              if timeout --kill-after=10s 5m \
+                  skopeo copy --format v2s2 \
+                    --authfile "$auth_file" \
+                    "docker://$target" \
+                    "docker://$test_target"; then
+                echo "从 ACR 读取测试标签的镜像元数据"
+                if ! timeout --kill-after=10s 60s \
+                    skopeo inspect --raw --authfile "$auth_file" "docker://$test_target" |
+                    jq -e '{
+                      mediaType,
+                      imageId: .config.digest,
+                      layerCount: (.layers | length),
+                      compressedLayerBytes: ([.layers[].size] | add // 0)
+                    } | select(
+                      .mediaType == "application/vnd.docker.distribution.manifest.v2+json"
+                      and (.imageId | type == "string")
+                      and .compressedLayerBytes > 0
+                    )'; then
+                  echo "::warning::未能验证 Schema 2 测试标签的清单元数据"
+                fi
+              else
+                echo "::warning::Schema 2 测试标签创建失败或超时，继续同步其余镜像"
+              fi
+            fi
+
             docker image rm "$target" "$image"
 
             echo "清理后剩余空间"
