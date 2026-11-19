@@ -30,7 +30,7 @@ jobs:
       - name: Maximize build space
         uses: easimon/maximize-build-space@v10
         with:
-          root-reserve-mb: 8192
+          root-reserve-mb: 16384
           swap-size-mb: 128
           remove-dotnet: 'true'
           remove-haskell: 'true'
@@ -45,10 +45,9 @@ jobs:
 
           storage=/mnt/ci-docker-storage
 
-          # 扩容目录必须是独立挂载点，避免误把镜像写回根分区。
+          # 扩容目录必须是独立挂载点。
           mountpoint -q "$storage"
 
-          # 使用 GitHub 托管 Runner 上的临时镜像目录。
           sudo systemctl stop docker.socket docker.service
           sudo systemctl stop containerd.service
 
@@ -97,8 +96,12 @@ jobs:
 
             platform=""
             case "${#fields[@]}:${fields[0]:-}" in
-              0:) continue ;;
-              1:*) image=${fields[0]} ;;
+              0:)
+                continue
+                ;;
+              1:*)
+                image=${fields[0]}
+                ;;
               2:--platform=*)
                 platform=${fields[0]#--platform=}
                 image=${fields[1]}
@@ -119,7 +122,7 @@ jobs:
               exit 1
             fi
 
-            # 拉取时保留 digest，目标名称只使用镜像名和标签。
+            # 拉取时保留源引用中的 digest，生成目标标签时去掉 digest。
             repository=${image%%@*}
             name_tag=${repository##*/}
             name=${name_tag%%:*}
@@ -161,7 +164,7 @@ jobs:
             exit 0
           fi
 
-          # 把登录配置放在临时目录，步骤结束时清理。
+          # 登录配置仅供当前步骤使用。
           umask 077
           export DOCKER_CONFIG
           DOCKER_CONFIG=$(mktemp -d "$RUNNER_TEMP/docker-config.XXXXXX")
@@ -179,6 +182,7 @@ jobs:
             name=${names[$i]}
             tag=${tags[$i]}
             item_number=$((i + 1))
+            selected_platform=${platform:-linux/amd64}
 
             prefix=""
             if [[ -n "$platform" ]]; then
@@ -191,9 +195,9 @@ jobs:
             target_tag="${prefix}${name}:${tag}"
             target="${ALIYUN_REGISTRY}/${ALIYUN_NAME_SPACE}/${target_tag}"
 
-            echo "[$item_number/$total] 开始拉取 $image（平台 ${platform:-linux/amd64}）"
+            echo "[$item_number/$total] 开始拉取 $image（平台 $selected_platform）"
             started=$SECONDS
-            docker pull --platform "${platform:-linux/amd64}" "$image"
+            docker pull --platform "$selected_platform" "$image"
             echo "拉取完成，耗时 $((SECONDS - started)) 秒"
 
             docker tag "$image" "$target"
@@ -203,7 +207,7 @@ jobs:
             docker push "$target"
             echo "推送完成 $target_tag，耗时 $((SECONDS - started)) 秒"
 
-            # 推送成功后移除本地引用，为下一条镜像腾出空间。
+            # 推送成功后移除本地镜像引用。
             docker image rm "$target" "$image"
 
             echo "清理后剩余空间"
