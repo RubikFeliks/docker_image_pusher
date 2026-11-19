@@ -29,6 +29,7 @@ jobs:
             -o "$RUNNER_TEMP/regctl"
           chmod 755 "$RUNNER_TEMP/regctl"
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/regctl" version
 
       - name: Sync images to Aliyun ACR
         shell: bash
@@ -37,6 +38,7 @@ jobs:
           ALIYUN_NAME_SPACE: ${{ secrets.ALIYUN_NAME_SPACE }}
           ALIYUN_REGISTRY_USER: ${{ secrets.ALIYUN_REGISTRY_USER }}
           ALIYUN_REGISTRY_PASSWORD: ${{ secrets.ALIYUN_REGISTRY_PASSWORD }}
+          CHECK_FIRST_IMAGE_DOWNLOAD: 'true'
         run: |
           set -euo pipefail
 
@@ -49,7 +51,6 @@ jobs:
           declare -A duplicate_images=()
 
           line_number=0
-
           while IFS= read -r line || [[ -n "$line" ]]; do
             line_number=$((line_number + 1))
             line=${line%$'\r'}
@@ -58,12 +59,8 @@ jobs:
 
             platform=""
             case "${#fields[@]}:${fields[0]:-}" in
-              0:)
-                continue
-                ;;
-              1:*)
-                image=${fields[0]}
-                ;;
+              0:) continue ;;
+              1:*) image=${fields[0]} ;;
               2:--platform=*)
                 platform=${fields[0]#--platform=}
                 image=${fields[1]}
@@ -84,7 +81,7 @@ jobs:
               exit 1
             fi
 
-            # 保留原始引用用于复制，去掉 digest 后计算目标名称。
+            # 原始引用用于复制，目标标签按去掉 digest 后的名称计算。
             repository=${image%%@*}
             name_tag=${repository##*/}
             name=${name_tag%%:*}
@@ -120,7 +117,8 @@ jobs:
             tags+=("$tag")
           done < images.txt
 
-          if [[ ${#sources[@]} -eq 0 ]]; then
+          total=${#sources[@]}
+          if [[ "$total" -eq 0 ]]; then
             echo "images.txt 没有需要同步的镜像。"
             exit 0
           fi
@@ -152,31 +150,57 @@ jobs:
               prefix="${prefix}${namespace}_"
             fi
 
-            target="${ALIYUN_REGISTRY}/${ALIYUN_NAME_SPACE}/${prefix}${name}:${tag}"
+            target_tag="${prefix}${name}:${tag}"
+            target="${ALIYUN_REGISTRY}/${ALIYUN_NAME_SPACE}/${target_tag}"
 
-            echo "[$item_number/${#sources[@]}] 检查源镜像 $image（平台 $selected_platform）"
-            if timeout --kill-after=10s 60s \
-                regctl image manifest --platform "$selected_platform" "$image" >/dev/null; then
-              echo "源镜像清单读取成功，开始复制到 ACR"
+            echo "[$item_number/$total] 检查源镜像 $image（平台 $selected_platform）"
+            if manifest=$(
+              timeout --kill-after=10s 60s \
+                regctl image manifest --platform "$selected_platform" \
+                  --format raw-body "$image"
+            ); then
+              echo "源镜像清单读取成功"
             else
               status=$?
-              if [[ "$status" -eq 124 || "$status" -eq 137 ]]; then
-                echo "::error::源镜像清单查询超时，镜像 $image，退出码 $status"
-              else
-                echo "::error::源镜像清单读取失败，镜像 $image，退出码 $status"
-              fi
+              echo "::error::读取源镜像清单失败，镜像 $image，退出码 $status"
               exit "$status"
             fi
 
+            if [[ "$i" -eq 0 && "$CHECK_FIRST_IMAGE_DOWNLOAD" == 'true' ]]; then
+              if largest_layer=$(jq -er '.layers | max_by(.size) | .digest' <<< "$manifest"); then
+                sample_bytes=67108864
+                started=$SECONDS
+                echo "测试从源仓库读取最大镜像层的前 64 MiB，最多等待 90 秒"
+
+                # head 读够后会关闭管道。仅在此子 shell 里关闭 pipefail，
+                # 让 wc 报告实际收到的字节数，包括超时前已收到的数据。
+                received=$(
+                  set +o pipefail
+                  timeout --kill-after=5s 90s \
+                    regctl blob get "$image" "$largest_layer" |
+                    head -c "$sample_bytes" |
+                    wc -c
+                )
+
+                echo "源仓库测试：收到 $received/$sample_bytes 字节，耗时 $((SECONDS - started)) 秒"
+                if [[ "$received" -lt "$sample_bytes" ]]; then
+                  echo "::warning::源仓库抽样未读满 64 MiB，请结合上方错误和耗时查看"
+                fi
+              else
+                echo "::warning::无法从清单提取最大镜像层，继续正式复制"
+              fi
+            fi
+
+            echo "开始复制到 ACR，目标标签 $target_tag，单镜像限时 45 分钟"
             started=$SECONDS
             if timeout --kill-after=15s 45m \
                 regctl image copy --verbosity info \
                   --platform "$selected_platform" "$image" "$target"; then
-              echo "同步完成 $image，目标标签 ${prefix}${name}:${tag}，耗时 $((SECONDS - started)) 秒"
+              echo "同步完成 $image，目标标签 $target_tag，耗时 $((SECONDS - started)) 秒"
             else
               status=$?
               if [[ "$status" -eq 124 || "$status" -eq 137 ]]; then
-                echo "::error::复制超时，镜像 $image，退出码 $status"
+                echo "::error::复制超时或进程被终止，镜像 $image，退出码 $status"
               else
                 echo "::error::复制失败，镜像 $image，退出码 $status"
               fi
@@ -184,4 +208,4 @@ jobs:
             fi
           done
 
-          echo "全部同步完成，共 ${#sources[@]} 个镜像。"
+          echo "全部同步完成，共 $total 个镜像。"
