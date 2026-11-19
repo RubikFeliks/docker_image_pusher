@@ -58,8 +58,12 @@ jobs:
 
             platform=""
             case "${#fields[@]}:${fields[0]:-}" in
-              0:) continue ;;
-              1:*) image=${fields[0]} ;;
+              0:)
+                continue
+                ;;
+              1:*)
+                image=${fields[0]}
+                ;;
               2:--platform=*)
                 platform=${fields[0]#--platform=}
                 image=${fields[1]}
@@ -69,18 +73,18 @@ jobs:
                 image=${fields[2]}
                 ;;
               *)
-                echo "::error file=images.txt,line=$line_number::Invalid image entry"
+                echo "::error file=images.txt,line=$line_number::镜像条目格式错误"
                 exit 1
                 ;;
             esac
 
             if [[ "$image" == -* ]] ||
                [[ "${fields[0]}" == --platform* && -z "$platform" ]]; then
-              echo "::error file=images.txt,line=$line_number::Missing image or platform"
+              echo "::error file=images.txt,line=$line_number::缺少镜像名或平台"
               exit 1
             fi
 
-            # 保留源 digest，只在生成目标镜像名时去掉它。
+            # 保留原始引用用于复制，去掉 digest 后计算目标名称。
             repository=${image%%@*}
             name_tag=${repository##*/}
             name=${name_tag%%:*}
@@ -88,12 +92,12 @@ jobs:
             if [[ "$name_tag" == *:* ]]; then
               tag=${name_tag#*:}
             fi
+
             if [[ -z "$name" || -z "$tag" ]]; then
-              echo "::error file=images.txt,line=$line_number::Missing image name or tag"
+              echo "::error file=images.txt,line=$line_number::缺少镜像名或标签"
               exit 1
             fi
 
-            # 沿用原先的命名空间规则。
             namespace=""
             IFS=/ read -r -a parts <<< "$repository"
             case "${#parts[@]}" in
@@ -125,9 +129,11 @@ jobs:
           umask 077
           trap 'rm -f -- "$REGCTL_CONFIG"' EXIT
 
+          echo "登录阿里云 ACR"
           printf '%s\n' "$ALIYUN_REGISTRY_PASSWORD" |
-            regctl registry login "$ALIYUN_REGISTRY" \
-              -u "$ALIYUN_REGISTRY_USER" --pass-stdin
+            timeout --kill-after=10s 60s \
+              regctl registry login "$ALIYUN_REGISTRY" \
+                -u "$ALIYUN_REGISTRY_USER" --pass-stdin
 
           for i in "${!sources[@]}"; do
             image=${sources[$i]}
@@ -135,6 +141,8 @@ jobs:
             namespace=${namespaces[$i]}
             name=${names[$i]}
             tag=${tags[$i]}
+            selected_platform=${platform:-linux/amd64}
+            item_number=$((i + 1))
 
             prefix=""
             if [[ -n "$platform" ]]; then
@@ -145,7 +153,35 @@ jobs:
             fi
 
             target="${ALIYUN_REGISTRY}/${ALIYUN_NAME_SPACE}/${prefix}${name}:${tag}"
-            echo "同步 $image（平台 ${platform:-linux/amd64}）"
-            regctl image copy --platform "${platform:-linux/amd64}" \
-              "$image" "$target"
+
+            echo "[$item_number/${#sources[@]}] 检查源镜像 $image（平台 $selected_platform）"
+            if timeout --kill-after=10s 60s \
+                regctl image manifest --platform "$selected_platform" "$image" >/dev/null; then
+              echo "源镜像清单读取成功，开始复制到 ACR"
+            else
+              status=$?
+              if [[ "$status" -eq 124 || "$status" -eq 137 ]]; then
+                echo "::error::源镜像清单查询超时，镜像 $image，退出码 $status"
+              else
+                echo "::error::源镜像清单读取失败，镜像 $image，退出码 $status"
+              fi
+              exit "$status"
+            fi
+
+            started=$SECONDS
+            if timeout --kill-after=15s 45m \
+                regctl image copy --verbosity info \
+                  --platform "$selected_platform" "$image" "$target"; then
+              echo "同步完成 $image，目标标签 ${prefix}${name}:${tag}，耗时 $((SECONDS - started)) 秒"
+            else
+              status=$?
+              if [[ "$status" -eq 124 || "$status" -eq 137 ]]; then
+                echo "::error::复制超时，镜像 $image，退出码 $status"
+              else
+                echo "::error::复制失败，镜像 $image，退出码 $status"
+              fi
+              exit "$status"
+            fi
           done
+
+          echo "全部同步完成，共 ${#sources[@]} 个镜像。"
