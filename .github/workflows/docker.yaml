@@ -21,11 +21,14 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Check disk space before expansion
+      - name: Install Skopeo
         shell: bash
         run: |
-          df -hP /
-          df -iP /
+          if ! command -v skopeo >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends skopeo
+          fi
+          skopeo --version
 
       - name: Maximize build space
         uses: easimon/maximize-build-space@v10
@@ -51,27 +54,20 @@ jobs:
 
           sudo mkdir -p "$storage/docker" "$storage/containerd"
           sudo mkdir -p /var/lib/docker /var/lib/containerd
-
           sudo mount --bind "$storage/docker" /var/lib/docker
           sudo mount --bind "$storage/containerd" /var/lib/containerd
+
+          # Skopeo 导出本地镜像时使用扩容卷上的临时目录。
+          sudo install -d -m 0700 -o "$(id -u)" -g "$(id -g)" "$storage/skopeo-tmp"
 
           sudo systemctl start containerd.service
           sudo systemctl start docker.service
 
-          echo "检查 Docker 存储驱动和挂载"
           docker info --format 'Driver={{.Driver}} DriverStatus={{json .DriverStatus}} DockerRootDir={{.DockerRootDir}}'
           findmnt --mountpoint /var/lib/docker
           findmnt --mountpoint /var/lib/containerd
-
-          echo "检查根分区和镜像存储容量"
           df -hP / /home/runner /var/lib/docker /var/lib/containerd
           df -iP / /home/runner /var/lib/docker /var/lib/containerd
-
-      - name: Install Skopeo
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends skopeo
 
       - name: Pull and push images to Aliyun ACR
         shell: bash
@@ -126,7 +122,7 @@ jobs:
               exit 1
             fi
 
-            # 拉取时保留 digest，生成目标标签时去掉 digest。
+            # 拉取时保留源 digest，生成目标名称时去掉 digest。
             repository=${image%%@*}
             name_tag=${repository##*/}
             name=${name_tag%%:*}
@@ -176,7 +172,8 @@ jobs:
           echo "登录阿里云 ACR"
           printf '%s\n' "$ALIYUN_REGISTRY_PASSWORD" |
             docker login "$ALIYUN_REGISTRY" \
-              --username "$ALIYUN_REGISTRY_USER" --password-stdin
+              --username "$ALIYUN_REGISTRY_USER" \
+              --password-stdin
 
           auth_file="$DOCKER_CONFIG/config.json"
 
@@ -209,37 +206,38 @@ jobs:
 
             echo "[$item_number/$total] 开始推送 $target_tag 到 ACR"
             started=$SECONDS
-            docker push "$target"
-            echo "推送完成 $target_tag，耗时 $((SECONDS - started)) 秒"
 
             if [[ "$target_tag" == "open-webui:0.13" ]]; then
-              test_target="${target%:*}:0.13-schema2-test"
+              echo "以 Docker Schema 2 格式发布正式标签 $target_tag"
+              (
+                export TMPDIR
+                TMPDIR=$(mktemp -d /mnt/ci-docker-storage/skopeo-tmp/copy.XXXXXX)
+                trap 'rm -rf -- "$TMPDIR"' EXIT
 
-              echo "生成 Docker Schema 2 测试标签 open-webui:0.13-schema2-test"
-              if timeout --kill-after=10s 5m \
-                  skopeo copy --format v2s2 \
-                    --authfile "$auth_file" \
-                    "docker://$target" \
-                    "docker://$test_target"; then
-                echo "从 ACR 读取测试标签的镜像元数据"
-                if ! timeout --kill-after=10s 60s \
-                    skopeo inspect --raw --authfile "$auth_file" "docker://$test_target" |
-                    jq -e '{
-                      mediaType,
+                skopeo copy --format v2s2 \
+                  --dest-authfile "$auth_file" \
+                  "docker-daemon:$target" \
+                  "docker://$target"
+              )
+
+              echo "从 ACR 验证正式标签的镜像清单"
+              skopeo inspect --raw --authfile "$auth_file" "docker://$target" |
+                jq -e '
+                  select(.mediaType == "application/vnd.docker.distribution.manifest.v2+json")
+                  | {
                       imageId: .config.digest,
-                      layerCount: (.layers | length),
                       compressedLayerBytes: ([.layers[].size] | add // 0)
-                    } | select(
-                      .mediaType == "application/vnd.docker.distribution.manifest.v2+json"
-                      and (.imageId | type == "string")
+                    }
+                  | select(
+                      (.imageId | type == "string")
                       and .compressedLayerBytes > 0
-                    )'; then
-                  echo "::warning::未能验证 Schema 2 测试标签的清单元数据"
-                fi
-              else
-                echo "::warning::Schema 2 测试标签创建失败或超时，继续同步其余镜像"
-              fi
+                    )
+                '
+            else
+              docker push "$target"
             fi
+
+            echo "推送完成 $target_tag，耗时 $((SECONDS - started)) 秒"
 
             docker image rm "$target" "$image"
 
